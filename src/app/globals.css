@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fff5f7;
+  --foreground: #3d1a24;
+  --font-dancing: "Dancing Script", cursive;
+  --font-nunito: "Nunito", sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-nunito);
+  --font-display: var(--font-dancing);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-nunito), "Helvetica Neue", Arial, sans-serif;
+  overscroll-behavior: none;
+}
+
+/* 花里胡哨的 Sylvia 标题样式 */
+.sylvia-title {
+  font-family: var(--font-dancing), cursive;
+  background: linear-gradient(
+    135deg,
+    #ff9de2 0%,
+    #ff6eb4 15%,
+    #e040a0 30%,
+    #ff85c2 45%,
+    #c678dd 60%,
+    #ff9de2 75%,
+    #ffb3d9 90%,
+    #ff6eb4 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+  text-shadow: none;
+  filter: drop-shadow(0 0 20px rgba(255, 110, 180, 0.5));
+}
+
+@keyframes shimmer {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* 粉红湖背景渐变 (在放入真实照片之前的占位背景) */
+.hero-gradient {
+  background: linear-gradient(
+    160deg,
+    #ffb3d9 0%,
+    #ff85c2 20%,
+    #e8a4c8 40%,
+    #f7c5e0 55%,
+    #c9a0dc 70%,
+    #ffb3d9 85%,
+    #ffd6ec 100%
+  );
+}
+
+/* 专辑卡片悬浮效果 */
+.album-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.album-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(198, 120, 221, 0.3);
+}
+
+.album-card:hover .album-overlay {
+  opacity: 1;
+}
+
+.album-overlay {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* 照片灯箱 */
+.lightbox {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 滚动提示箭头动画 */
+.scroll-arrow {
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+  60% { transform: translateY(-5px); }
+}
+
+/* 章节标题下划线装饰 */
+.section-title::after {
+  content: "";
+  display: block;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #ff6eb4, #c678dd);
+  margin: 12px auto 0;
+  border-radius: 9999px;
+}
+
+/* 照片网格悬浮 */
+.photo-item {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.photo-item:hover {
+  transform: scale(1.03);
+  box-shadow: 0 12px 30px rgba(198, 120, 221, 0.35);
+}
+
+/* 粒子/星星背景装饰 */
+.stars-bg::before {
+  content: "✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧";
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  width: 90%;
+  text-align: center;
+}

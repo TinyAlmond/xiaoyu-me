@@ -1,0 +1,30 @@
+import { Dancing_Script, Nunito } from "next/font/google";
+import "./globals.css";
+
+const dancingScript = Dancing_Script({
+  variable: "--font-dancing",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+});
+
+const nunito = Nunito({
+  variable: "--font-nunito",
+  subsets: ["latin"],
+  weight: ["300", "400", "600"],
+});
+
+export const metadata = {
+  title: "Sylvia's Photography",
+  description: "摄影约拍 | 用镜头记录美好瞬间",
+};
+
+export default function RootLayout({ children }) {
+  return (
+    <html
+      lang="zh"
+      className={`${dancingScript.variable} ${nunito.variable} h-full`}
+    >
+      <body className="min-h-full flex flex-col font-nunito">{children}</body>
+    </html>
+  );
+}
