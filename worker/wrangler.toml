@@ -1,0 +1,16 @@
+name = "sylvia-api"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sylvia-db"
+database_id = "f03837e0-4bc9-4105-8ece-4eb6489b25c3"
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "sylvia-photos"
+
+[vars]
+ALLOWED_ORIGIN = "https://suxiaoyu.me"
