@@ -1,12 +1,35 @@
 "use server";
 
-const API = "https://sylvia-photo-api.longsizhuo.workers.dev";
-const ADMIN_SECRET = process.env.ADMIN_SECRET || "sylvia-admin-2026";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "sylvia666";
+import { createSession, validateSession, destroySession } from "@/lib/session";
 
-// 验证管理员密码
-export async function verifyAdmin(password: string): Promise<boolean> {
-  return password === ADMIN_PASSWORD;
+const API = "https://sylvia-photo-api.longsizhuo.workers.dev";
+
+function getAdminSecret(): string {
+  return process.env.ADMIN_SECRET || "sylvia-admin-2026";
+}
+
+// 登录
+export async function login(username: string, password: string): Promise<{ success: boolean; error?: string }> {
+  const expectedUsername = process.env.ADMIN_USERNAME;
+  const expectedPassword = process.env.ADMIN_PASSWORD;
+
+  if (username !== expectedUsername || password !== expectedPassword) {
+    return { success: false, error: "用户名或密码错误" };
+  }
+
+  await createSession();
+  return { success: true };
+}
+
+// 登出
+export async function logout(): Promise<void> {
+  await destroySession();
+}
+
+// 获取登录状态
+export async function getAuthStatus(): Promise<{ isAdmin: boolean }> {
+  const valid = await validateSession();
+  return { isAdmin: valid };
 }
 
 // 获取专辑列表（公开）
@@ -23,27 +46,30 @@ export async function fetchAlbum(slug: string) {
   return res.json();
 }
 
-// 新建专辑（需要管理员密码）
+// 新建专辑（需要登录）
 export async function createAlbum(
-  password: string,
   data: { name: string; nameEn?: string; description?: string; category: string; slug: string }
 ) {
-  if (password !== ADMIN_PASSWORD) return { error: "密码错误" };
+  const valid = await validateSession();
+  if (!valid) return { error: "未登录" };
+
   const res = await fetch(`${API}/api/albums`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Admin-Secret": ADMIN_SECRET },
+    headers: { "Content-Type": "application/json", "X-Admin-Secret": getAdminSecret() },
     body: JSON.stringify(data),
   });
   if (!res.ok) return { error: "创建失败" };
   return res.json();
 }
 
-// 上传图片（需要管理员密码）
-export async function uploadPhoto(password: string, slug: string, formData: FormData) {
-  if (password !== ADMIN_PASSWORD) return { error: "上传失败" };
+// 上传图片（需要登录）
+export async function uploadPhoto(slug: string, formData: FormData) {
+  const valid = await validateSession();
+  if (!valid) return { error: "未登录" };
+
   const res = await fetch(`${API}/api/albums/${slug}/upload`, {
     method: "POST",
-    headers: { "X-Admin-Secret": ADMIN_SECRET },
+    headers: { "X-Admin-Secret": getAdminSecret() },
     body: formData,
   });
   if (!res.ok) return { error: "上传失败" };

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { verifyAdmin, fetchAlbum, uploadPhoto } from "../../actions";
+import { fetchAlbum, uploadPhoto } from "../../actions";
+import { useAuth } from "@/context/AuthContext";
 
 interface Photo {
   id: number;
@@ -16,49 +17,6 @@ interface AlbumDetail {
   cover_url?: string;
   description?: string;
   photos?: Photo[];
-}
-
-// 管理员登录弹框
-function AdminLoginModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (pwd: string) => void }) {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    const ok = await verifyAdmin(password);
-    setLoading(false);
-    if (ok) {
-      localStorage.setItem("admin_pwd", password);
-      onSuccess(password);
-      onClose();
-    } else {
-      setError("密码错误");
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-3xl p-8 shadow-2xl max-w-xs w-full mx-4" onClick={(e) => e.stopPropagation()}>
-        <div className="text-4xl mb-3 text-center">🔐</div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-2 text-center">管理员验证</h3>
-        <p className="text-gray-400 text-xs text-center mb-6">输入管理员密码以继续操作</p>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input type="password" className="w-full border border-pink-200 rounded-xl px-4 py-3 text-sm text-center focus:outline-none focus:ring-2 focus:ring-pink-300"
-            placeholder="输入密码" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
-          {error && <p className="text-red-400 text-xs text-center">{error}</p>}
-          <div className="flex gap-3">
-            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-2xl border border-pink-200 text-gray-500 text-sm hover:bg-pink-50 transition-colors">取消</button>
-            <button type="submit" disabled={loading} className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-pink-400 to-fuchsia-400 text-white text-sm font-medium hover:opacity-90 disabled:opacity-50">
-              {loading ? "验证中…" : "确认"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
 }
 
 // 灯箱组件
@@ -90,23 +48,17 @@ function Lightbox({ photos, currentIndex, onClose, onPrev, onNext }: {
 }
 
 export default function AlbumPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { isAdmin } = useAuth();
   const [slug, setSlug] = useState<string>("");
   const [album, setAlbum] = useState<AlbumDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
-  const [adminPwd, setAdminPwd] = useState("");
-  const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
     params.then((p) => setSlug(p.slug));
   }, [params]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("admin_pwd");
-    if (saved) setAdminPwd(saved);
-  }, []);
 
   const loadAlbum = async (s: string) => {
     setLoading(true);
@@ -119,14 +71,6 @@ export default function AlbumPage({ params }: { params: Promise<{ slug: string }
     if (slug) loadAlbum(slug);
   }, [slug]);
 
-  const handleUploadClick = () => {
-    if (adminPwd) {
-      document.getElementById("photo-upload")?.click();
-    } else {
-      setShowLogin(true);
-    }
-  };
-
   const handleUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -135,7 +79,7 @@ export default function AlbumPage({ params }: { params: Promise<{ slug: string }
     for (const file of files) {
       const form = new FormData();
       form.append("file", file);
-      const result = await uploadPhoto(adminPwd, slug, form);
+      const result = await uploadPhoto(slug, form);
       if (result.error) { setUploadError("部分图片上传失败：" + result.error); }
     }
     setUploading(false);
@@ -163,16 +107,6 @@ export default function AlbumPage({ params }: { params: Promise<{ slug: string }
 
   return (
     <main className="min-h-screen bg-rose-50">
-      {showLogin && (
-        <AdminLoginModal
-          onClose={() => setShowLogin(false)}
-          onSuccess={(pwd) => {
-            setAdminPwd(pwd);
-            document.getElementById("photo-upload")?.click();
-          }}
-        />
-      )}
-
       {/* 顶部 Banner */}
       <div className="relative h-56 sm:h-72 bg-gradient-to-br from-pink-300 via-fuchsia-200 to-purple-300 overflow-hidden">
         {album.cover_url && (
@@ -195,17 +129,22 @@ export default function AlbumPage({ params }: { params: Promise<{ slug: string }
         <p className="text-gray-400 text-sm">
           {photos.length > 0 ? `共 ${photos.length} 张照片` : "照片即将上传"}
         </p>
-        <button
-          onClick={handleUploadClick}
-          disabled={uploading}
-          className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all
-            ${uploading
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-gradient-to-r from-pink-400 to-fuchsia-400 text-white hover:opacity-90 shadow-sm cursor-pointer"}`}
-        >
-          {uploading ? "上传中…" : "＋ 上传图片"}
-        </button>
-        <input id="photo-upload" type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} />
+        {/* 上传按钮 - 仅管理员可见 */}
+        {isAdmin && (
+          <>
+            <button
+              onClick={() => document.getElementById("photo-upload")?.click()}
+              disabled={uploading}
+              className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all
+                ${uploading
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-gradient-to-r from-pink-400 to-fuchsia-400 text-white hover:opacity-90 shadow-sm cursor-pointer"}`}
+            >
+              {uploading ? "上传中…" : "＋ 上传图片"}
+            </button>
+            <input id="photo-upload" type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} />
+          </>
+        )}
       </div>
       {uploadError && <p className="text-center text-red-400 text-xs mb-4">{uploadError}</p>}
 
@@ -223,7 +162,9 @@ export default function AlbumPage({ params }: { params: Promise<{ slug: string }
         ) : (
           <div className="text-center py-24">
             <div className="text-6xl mb-6 opacity-30">📷</div>
-            <p className="text-gray-400 font-light">点击上方「上传图片」开始添加照片</p>
+            <p className="text-gray-400 font-light">
+              {isAdmin ? "点击上方「上传图片」开始添加照片" : "照片即将上传，敬请期待~"}
+            </p>
             <Link href="/" className="inline-block mt-8 px-6 py-3 rounded-full bg-gradient-to-r from-pink-400 to-fuchsia-400 text-white text-sm hover:opacity-90 transition-opacity">
               浏览其他专辑
             </Link>

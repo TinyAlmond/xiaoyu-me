@@ -1,6 +1,7 @@
 import { Dancing_Script, Nunito } from "next/font/google";
 import "./globals.css";
 import FloatingBookButton from "./FloatingBookButton";
+import { AuthProvider } from "@/context/AuthContext";
 
 const dancingScript = Dancing_Script({
   variable: "--font-dancing",
@@ -26,8 +27,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${dancingScript.variable} ${nunito.variable} h-full`}
     >
       <body className="min-h-full flex flex-col font-nunito">
-        {children}
-        <FloatingBookButton />
+        <AuthProvider>
+          {children}
+          <FloatingBookButton />
+        </AuthProvider>
       </body>
     </html>
   );

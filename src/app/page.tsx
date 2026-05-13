@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback, type FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { verifyAdmin, fetchAlbums as fetchAlbumsAction, createAlbum } from "./actions";
+import { fetchAlbums as fetchAlbumsAction, createAlbum } from "./actions";
+import { useAuth } from "@/context/AuthContext";
 
 // ===== 想添加更多轮播图？在这里加文件名就行 =====
 const HERO_IMAGES = [
@@ -22,59 +23,9 @@ interface AlbumData {
   description?: string;
 }
 
-// ===== 管理员登录弹框 =====
-function AdminLoginModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (pwd: string) => void }) {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    const ok = await verifyAdmin(password);
-    setLoading(false);
-    if (ok) {
-      localStorage.setItem("admin_pwd", password);
-      onSuccess(password);
-      onClose();
-    } else {
-      setError("密码错误");
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-3xl p-8 shadow-2xl max-w-xs w-full mx-4" onClick={(e) => e.stopPropagation()}>
-        <div className="text-4xl mb-3 text-center">🔐</div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-2 text-center">管理员验证</h3>
-        <p className="text-gray-400 text-xs text-center mb-6">输入管理员密码以继续操作</p>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input
-            type="password"
-            className="w-full border border-pink-200 rounded-xl px-4 py-3 text-sm text-center focus:outline-none focus:ring-2 focus:ring-pink-300"
-            placeholder="输入密码"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoFocus
-          />
-          {error && <p className="text-red-400 text-xs text-center">{error}</p>}
-          <div className="flex gap-3">
-            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-2xl border border-pink-200 text-gray-500 text-sm hover:bg-pink-50 transition-colors">取消</button>
-            <button type="submit" disabled={loading} className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-pink-400 to-fuchsia-400 text-white text-sm font-medium hover:opacity-90 disabled:opacity-50">
-              {loading ? "验证中…" : "确认"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 // ===== 新建专辑弹框 =====
-function NewAlbumModal({ category, adminPwd, onClose, onCreated }: {
+function NewAlbumModal({ category, onClose, onCreated }: {
   category: string;
-  adminPwd: string;
   onClose: () => void;
   onCreated: (album: AlbumData) => void;
 }) {
@@ -93,7 +44,7 @@ function NewAlbumModal({ category, adminPwd, onClose, onCreated }: {
     setLoading(true);
     setError("");
     const slug = slugify(nameEn || name) + "-" + Date.now();
-    const result = await createAlbum(adminPwd, { name, nameEn, description, category, slug });
+    const result = await createAlbum({ name, nameEn, description, category, slug });
     setLoading(false);
     if (result.error) {
       setError(result.error);
@@ -185,16 +136,10 @@ function AlbumSection({ title, titleEn, description, category, bgClass, accentCl
   accentClass: string;
   emptyIcon: string;
 }) {
+  const { isAdmin } = useAuth();
   const [albums, setAlbums] = useState<AlbumData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
-  const [adminPwd, setAdminPwd] = useState("");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("admin_pwd");
-    if (saved) setAdminPwd(saved);
-  }, []);
 
   const loadAlbums = useCallback(async () => {
     setLoading(true);
@@ -205,26 +150,11 @@ function AlbumSection({ title, titleEn, description, category, bgClass, accentCl
 
   useEffect(() => { loadAlbums(); }, [loadAlbums]);
 
-  const handleNewAlbumClick = () => {
-    if (adminPwd) {
-      setShowModal(true);
-    } else {
-      setShowLogin(true);
-    }
-  };
-
   return (
     <section className={`py-20 px-6 ${bgClass}`}>
-      {showLogin && (
-        <AdminLoginModal
-          onClose={() => setShowLogin(false)}
-          onSuccess={(pwd) => { setAdminPwd(pwd); setShowModal(true); }}
-        />
-      )}
       {showModal && (
         <NewAlbumModal
           category={category}
-          adminPwd={adminPwd}
           onClose={() => setShowModal(false)}
           onCreated={(album) => setAlbums((prev) => [album, ...prev])}
         />
@@ -249,15 +179,17 @@ function AlbumSection({ title, titleEn, description, category, bgClass, accentCl
           </div>
         )}
 
-        {/* 新建专辑按钮 */}
-        <div className="text-center mt-10">
-          <button
-            onClick={handleNewAlbumClick}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-dashed border-pink-300 text-pink-400 text-sm hover:bg-pink-50 hover:border-pink-400 transition-all"
-          >
-            <span className="text-lg">＋</span> 新建专辑
-          </button>
-        </div>
+        {/* 新建专辑按钮 - 仅管理员可见 */}
+        {isAdmin && (
+          <div className="text-center mt-10">
+            <button
+              onClick={() => setShowModal(true)}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-dashed border-pink-300 text-pink-400 text-sm hover:bg-pink-50 hover:border-pink-400 transition-all"
+            >
+              <span className="text-lg">＋</span> 新建专辑
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -354,6 +286,8 @@ function HeroCarousel() {
 }
 
 export default function Home() {
+  const { isAdmin, logout } = useAuth();
+
   return (
     <main className="flex flex-col">
       <HeroCarousel />
@@ -445,6 +379,21 @@ export default function Home() {
         <p className="text-4xl mb-3" style={{ fontFamily: "var(--font-dancing), cursive", background: "linear-gradient(90deg, #ff6eb4, #c678dd)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Sylvia</p>
         <p className="text-gray-400 text-xs tracking-widest mt-1">Photography &amp; Art Direction</p>
         <div className="mt-4 text-pink-300 tracking-[0.3em] text-xs">✦ &nbsp; ✧ &nbsp; ✦</div>
+        {/* 登录/登出入口 */}
+        <div className="mt-6">
+          {isAdmin ? (
+            <button
+              onClick={logout}
+              className="text-gray-300 text-xs hover:text-pink-400 transition-colors"
+            >
+              登出管理
+            </button>
+          ) : (
+            <Link href="/login" className="text-gray-300 text-xs hover:text-pink-400 transition-colors">
+              管理入口
+            </Link>
+          )}
+        </div>
       </footer>
     </main>
   );
