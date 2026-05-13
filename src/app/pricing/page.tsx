@@ -3,7 +3,27 @@
 import { useState } from "react";
 import Link from "next/link";
 
-const PLANS = [
+interface PlanItem {
+  icon: string;
+  label: string;
+  value: string;
+}
+
+interface Plan {
+  id: string;
+  name: string;
+  nameEn: string;
+  price: string;
+  highlight: boolean;
+  badge: string | null;
+  color: string;
+  border: string;
+  btnColor: string;
+  accentText: string;
+  items: PlanItem[];
+}
+
+const PLANS: Plan[] = [
   {
     id: "basic",
     name: "基础套餐",
@@ -73,7 +93,7 @@ const NOTES = [
   "预约拍摄前请先通过私信确认档期，锁定日期需支付定金。",
 ];
 
-function WechatModal({ onClose }) {
+function WechatModal({ onClose }: { onClose: () => void }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"

@@ -1,6 +1,12 @@
+interface Env {
+  DB: D1Database;
+  PHOTOS: R2Bucket;
+  ALLOWED_ORIGIN: string;
+}
+
 const ADMIN_SECRET = "sylvia-admin-2026"; // 部署后可在 Worker 环境变量里改掉
 
-function cors(origin) {
+function cors(origin: string) {
   const allowed = ["https://suxiaoyu.me", "http://localhost:3000"];
   const o = allowed.includes(origin) ? origin : allowed[0];
   return {
@@ -10,19 +16,19 @@ function cors(origin) {
   };
 }
 
-function json(data, status = 200, origin = "") {
+function json(data: unknown, status = 200, origin = "") {
   return new Response(JSON.stringify(data), {
     status,
     headers: { "Content-Type": "application/json", ...cors(origin) },
   });
 }
 
-function isAdmin(request) {
+function isAdmin(request: Request) {
   return request.headers.get("X-Admin-Secret") === ADMIN_SECRET;
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const origin = request.headers.get("Origin") || "";
     const url = new URL(request.url);
     const path = url.pathname;
@@ -36,7 +42,7 @@ export default {
     if (request.method === "GET" && path === "/api/albums") {
       const category = url.searchParams.get("category");
       let sql = "SELECT * FROM albums";
-      const params = [];
+      const params: string[] = [];
       if (category) {
         sql += " WHERE category = ?";
         params.push(category);
@@ -61,7 +67,13 @@ export default {
     // ===== POST /api/albums (新建专辑，需要 admin secret) =====
     if (request.method === "POST" && path === "/api/albums") {
       if (!isAdmin(request)) return json({ error: "unauthorized" }, 401, origin);
-      const body = await request.json();
+      const body = await request.json() as {
+        name?: string;
+        nameEn?: string;
+        description?: string;
+        category?: string;
+        slug?: string;
+      };
       const { name, nameEn, description, category, slug } = body;
       if (!name || !slug || !category) return json({ error: "name, slug, category required" }, 400, origin);
       await env.DB.prepare(
@@ -76,30 +88,33 @@ export default {
     if (request.method === "POST" && uploadMatch) {
       if (!isAdmin(request)) return json({ error: "unauthorized" }, 401, origin);
       const slug = uploadMatch[1];
-      const album = await env.DB.prepare("SELECT * FROM albums WHERE slug = ?").bind(slug).first();
+      const album = await env.DB.prepare("SELECT * FROM albums WHERE slug = ?").bind(slug).first<{
+        id: number;
+        cover_url: string | null;
+      }>();
       if (!album) return json({ error: "album not found" }, 404, origin);
 
       const formData = await request.formData();
-      const file = formData.get("file");
+      const file = formData.get("file") as File | null;
       if (!file) return json({ error: "no file" }, 400, origin);
 
-      const ext = file.name.split(".").pop().toLowerCase();
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
       const key = `${slug}/${Date.now()}.${ext}`;
       await env.PHOTOS.put(key, file.stream(), {
         httpMetadata: { contentType: file.type },
       });
 
-      const url = `https://cdn.suxiaoyu.me/${key}`;
+      const photoUrl = `https://cdn.suxiaoyu.me/${key}`;
       const { meta } = await env.DB.prepare(
         "INSERT INTO photos (album_id, url) VALUES (?, ?)"
-      ).bind(album.id, url).run();
+      ).bind(album.id, photoUrl).run();
 
       // 如果是第一张图，自动设为封面
       if (!album.cover_url) {
-        await env.DB.prepare("UPDATE albums SET cover_url = ? WHERE id = ?").bind(url, album.id).run();
+        await env.DB.prepare("UPDATE albums SET cover_url = ? WHERE id = ?").bind(photoUrl, album.id).run();
       }
 
-      return json({ url, id: meta.last_row_id }, 201, origin);
+      return json({ url: photoUrl, id: meta.last_row_id }, 201, origin);
     }
 
     // ===== DELETE /api/photos/:id =====
@@ -107,7 +122,9 @@ export default {
     if (request.method === "DELETE" && photoMatch) {
       if (!isAdmin(request)) return json({ error: "unauthorized" }, 401, origin);
       const id = parseInt(photoMatch[1]);
-      const photo = await env.DB.prepare("SELECT * FROM photos WHERE id = ?").bind(id).first();
+      const photo = await env.DB.prepare("SELECT * FROM photos WHERE id = ?").bind(id).first<{
+        url: string;
+      }>();
       if (!photo) return json({ error: "not found" }, 404, origin);
       // 从 R2 删除
       const key = photo.url.split("r2.dev/")[1];

@@ -1,17 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { verifyAdmin, fetchAlbum, uploadPhoto } from "../../actions";
 
+interface Photo {
+  id: number;
+  url: string;
+}
+
+interface AlbumDetail {
+  name: string;
+  name_en?: string;
+  cover_url?: string;
+  description?: string;
+  photos?: Photo[];
+}
+
 // 管理员登录弹框
-function AdminLoginModal({ onClose, onSuccess }) {
+function AdminLoginModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (pwd: string) => void }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -49,7 +62,13 @@ function AdminLoginModal({ onClose, onSuccess }) {
 }
 
 // 灯箱组件
-function Lightbox({ photos, currentIndex, onClose, onPrev, onNext }) {
+function Lightbox({ photos, currentIndex, onClose, onPrev, onNext }: {
+  photos: Photo[];
+  currentIndex: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
   return (
     <div className="lightbox fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={onClose}>
       <button className="absolute top-4 right-6 text-white/70 hover:text-white text-4xl z-10" onClick={onClose}>×</button>
@@ -70,40 +89,46 @@ function Lightbox({ photos, currentIndex, onClose, onPrev, onNext }) {
   );
 }
 
-export default function AlbumPage({ params }) {
-  const { slug } = params;
-  const [album, setAlbum] = useState(null);
+export default function AlbumPage({ params }: { params: Promise<{ slug: string }> }) {
+  const [slug, setSlug] = useState<string>("");
+  const [album, setAlbum] = useState<AlbumDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [adminPwd, setAdminPwd] = useState("");
   const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
+    params.then((p) => setSlug(p.slug));
+  }, [params]);
+
+  useEffect(() => {
     const saved = localStorage.getItem("admin_pwd");
     if (saved) setAdminPwd(saved);
   }, []);
 
-  const loadAlbum = async () => {
+  const loadAlbum = async (s: string) => {
     setLoading(true);
-    const data = await fetchAlbum(slug);
+    const data = await fetchAlbum(s);
     if (data) setAlbum(data);
     setLoading(false);
   };
 
-  useEffect(() => { loadAlbum(); }, [slug]);
+  useEffect(() => {
+    if (slug) loadAlbum(slug);
+  }, [slug]);
 
   const handleUploadClick = () => {
     if (adminPwd) {
-      document.getElementById("photo-upload").click();
+      document.getElementById("photo-upload")?.click();
     } else {
       setShowLogin(true);
     }
   };
 
-  const handleUpload = async (e) => {
-    const files = Array.from(e.target.files);
+  const handleUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setUploading(true);
     setUploadError("");
@@ -114,7 +139,7 @@ export default function AlbumPage({ params }) {
       if (result.error) { setUploadError("部分图片上传失败：" + result.error); }
     }
     setUploading(false);
-    loadAlbum();
+    loadAlbum(slug);
   };
 
   if (loading) {
@@ -143,7 +168,7 @@ export default function AlbumPage({ params }) {
           onClose={() => setShowLogin(false)}
           onSuccess={(pwd) => {
             setAdminPwd(pwd);
-            document.getElementById("photo-upload").click();
+            document.getElementById("photo-upload")?.click();
           }}
         />
       )}
@@ -212,8 +237,8 @@ export default function AlbumPage({ params }) {
           photos={photos}
           currentIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
-          onPrev={() => setLightboxIndex((i) => Math.max(0, i - 1))}
-          onNext={() => setLightboxIndex((i) => Math.min(photos.length - 1, i + 1))}
+          onPrev={() => setLightboxIndex((i) => Math.max(0, (i ?? 0) - 1))}
+          onNext={() => setLightboxIndex((i) => Math.min(photos.length - 1, (i ?? 0) + 1))}
         />
       )}
     </main>

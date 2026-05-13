@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { verifyAdmin, fetchAlbums as fetchAlbumsAction, createAlbum } from "./actions";
@@ -12,13 +12,23 @@ const HERO_IMAGES = [
   "/22.jpg",
 ];
 
+interface AlbumData {
+  slug: string;
+  name: string;
+  name_en?: string;
+  nameEn?: string;
+  cover_url?: string;
+  cover?: string;
+  description?: string;
+}
+
 // ===== 管理员登录弹框 =====
-function AdminLoginModal({ onClose, onSuccess }) {
+function AdminLoginModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (pwd: string) => void }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -62,17 +72,22 @@ function AdminLoginModal({ onClose, onSuccess }) {
 }
 
 // ===== 新建专辑弹框 =====
-function NewAlbumModal({ category, adminPwd, onClose, onCreated }) {
+function NewAlbumModal({ category, adminPwd, onClose, onCreated }: {
+  category: string;
+  adminPwd: string;
+  onClose: () => void;
+  onCreated: (album: AlbumData) => void;
+}) {
   const [name, setName] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const slugify = (str) =>
+  const slugify = (str: string) =>
     str.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^\w-]/g, "");
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     setLoading(true);
@@ -137,7 +152,7 @@ function NewAlbumModal({ category, adminPwd, onClose, onCreated }) {
 }
 
 // ===== 专辑卡片 =====
-function AlbumCard({ album }) {
+function AlbumCard({ album }: { album: AlbumData }) {
   const cover = album.cover_url || album.cover;
   return (
     <Link href={`/albums/${album.slug}`}>
@@ -161,8 +176,16 @@ function AlbumCard({ album }) {
 }
 
 // ===== 专辑区块（含新建按钮）=====
-function AlbumSection({ title, titleEn, description, category, bgClass, accentClass, emptyIcon }) {
-  const [albums, setAlbums] = useState([]);
+function AlbumSection({ title, titleEn, description, category, bgClass, accentClass, emptyIcon }: {
+  title: string;
+  titleEn: string;
+  description: string;
+  category: string;
+  bgClass: string;
+  accentClass: string;
+  emptyIcon: string;
+}) {
+  const [albums, setAlbums] = useState<AlbumData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -244,7 +267,7 @@ function AlbumSection({ title, titleEn, description, category, bgClass, accentCl
 function HeroCarousel() {
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
-  const touchStartX = useRef(null);
+  const touchStartX = useRef<number | null>(null);
   const total = HERO_IMAGES.length;
 
   const next = useCallback(() => setCurrent((i) => (i + 1) % total), [total]);
@@ -256,8 +279,8 @@ function HeroCarousel() {
     return () => clearInterval(timer);
   }, [paused, next]);
 
-  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
-  const handleTouchEnd = (e) => {
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
     if (Math.abs(diff) > 50) diff > 0 ? next() : prev();

@@ -19,7 +19,7 @@ export const metadata = {
   description: "摄影约拍 | 用镜头记录美好瞬间",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="zh"

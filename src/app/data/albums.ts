@@ -2,7 +2,16 @@
 // cover: 专辑封面图路径，photos: 专辑内照片列表
 // 把你的照片放进 public/albums/<slug>/ 文件夹，然后更新这里的路径
 
-export const photoAlbums = [
+export interface Album {
+  slug: string;
+  name: string;
+  nameEn: string;
+  cover: string;
+  description: string;
+  photos: string[];
+}
+
+export const photoAlbums: Album[] = [
   {
     slug: "pink-lake-wa",
     name: "西澳粉红湖",
@@ -38,7 +47,7 @@ export const photoAlbums = [
 ];
 
 // 动漫/游戏周边专区
-export const collectiblesAlbums = [
+export const collectiblesAlbums: Album[] = [
   {
     slug: "anime-figures",
     name: "手办收藏",
@@ -59,4 +68,4 @@ export const collectiblesAlbums = [
 ];
 
 // 所有专辑合集（用于动态路由查找）
-export const allAlbums = [...photoAlbums, ...collectiblesAlbums];
+export const allAlbums: Album[] = [...photoAlbums, ...collectiblesAlbums];
