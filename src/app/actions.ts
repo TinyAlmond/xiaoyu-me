@@ -62,6 +62,19 @@ export async function createAlbum(
   return res.json();
 }
 
+// 删除图片（需要登录）
+export async function deletePhoto(photoId: number): Promise<{ ok?: boolean; error?: string }> {
+  const valid = await validateSession();
+  if (!valid) return { error: "未登录" };
+
+  const res = await fetch(`${API}/api/photos/${photoId}`, {
+    method: "DELETE",
+    headers: { "X-Admin-Secret": getAdminSecret() },
+  });
+  if (!res.ok) return { error: "删除失败" };
+  return res.json();
+}
+
 // 上传图片（需要登录）
 export async function uploadPhoto(slug: string, formData: FormData) {
   const valid = await validateSession();

@@ -127,8 +127,8 @@ export default {
       }>();
       if (!photo) return json({ error: "not found" }, 404, origin);
       // 从 R2 删除
-      const key = photo.url.split("r2.dev/")[1];
-      if (key) await env.PHOTOS.delete(key);
+      const key = photo.url.replace("https://cdn.suxiaoyu.me/", "");
+      if (key && key !== photo.url) await env.PHOTOS.delete(key);
       await env.DB.prepare("DELETE FROM photos WHERE id = ?").bind(id).run();
       return json({ ok: true }, 200, origin);
     }

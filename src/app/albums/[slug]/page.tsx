@@ -3,7 +3,7 @@
 import { useState, useEffect, type ChangeEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { fetchAlbum, uploadPhoto } from "../../actions";
+import { fetchAlbum, uploadPhoto, deletePhoto } from "../../actions";
 import { useAuth } from "@/context/AuthContext";
 
 interface Photo {
@@ -55,6 +55,7 @@ export default function AlbumPage({ params }: { params: Promise<{ slug: string }
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     params.then((p) => setSlug(p.slug));
@@ -70,6 +71,18 @@ export default function AlbumPage({ params }: { params: Promise<{ slug: string }
   useEffect(() => {
     if (slug) loadAlbum(slug);
   }, [slug]);
+
+  const handleDelete = async (photoId: number) => {
+    if (!confirm("确定要删除这张照片吗？")) return;
+    setDeletingId(photoId);
+    const result = await deletePhoto(photoId);
+    setDeletingId(null);
+    if (result.error) {
+      alert("删除失败：" + result.error);
+    } else {
+      loadAlbum(slug);
+    }
+  };
 
   const handleUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -153,9 +166,19 @@ export default function AlbumPage({ params }: { params: Promise<{ slug: string }
         {photos.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {photos.map((photo, index) => (
-              <div key={photo.id} className="photo-item relative aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-pink-100 to-purple-100"
+              <div key={photo.id} className="photo-item group relative aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-pink-100 to-purple-100"
                 onClick={() => setLightboxIndex(index)}>
                 <Image src={photo.url} alt={`${album.name} ${index + 1}`} fill className="object-cover" />
+                {isAdmin && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDelete(photo.id); }}
+                    disabled={deletingId === photo.id}
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-500 transition-all z-10"
+                    aria-label="删除照片"
+                  >
+                    {deletingId === photo.id ? "…" : "×"}
+                  </button>
+                )}
               </div>
             ))}
           </div>
