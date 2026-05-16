@@ -2,9 +2,8 @@ interface Env {
   DB: D1Database;
   PHOTOS: R2Bucket;
   ALLOWED_ORIGIN: string;
+  ADMIN_SECRET: string;
 }
-
-const ADMIN_SECRET = "sylvia-admin-2026"; // 部署后可在 Worker 环境变量里改掉
 
 function cors(origin: string) {
   const allowed = ["https://suxiaoyu.me", "http://localhost:3000"];
@@ -23,8 +22,8 @@ function json(data: unknown, status = 200, origin = "") {
   });
 }
 
-function isAdmin(request: Request) {
-  return request.headers.get("X-Admin-Secret") === ADMIN_SECRET;
+function isAdmin(request: Request, env: Env) {
+  return request.headers.get("X-Admin-Secret") === env.ADMIN_SECRET;
 }
 
 export default {
@@ -66,7 +65,7 @@ export default {
 
     // ===== POST /api/albums (新建专辑，需要 admin secret) =====
     if (request.method === "POST" && path === "/api/albums") {
-      if (!isAdmin(request)) return json({ error: "unauthorized" }, 401, origin);
+      if (!isAdmin(request, env)) return json({ error: "unauthorized" }, 401, origin);
       const body = await request.json() as {
         name?: string;
         nameEn?: string;
@@ -86,7 +85,7 @@ export default {
     // ===== POST /api/albums/:slug/upload (上传图片) =====
     const uploadMatch = path.match(/^\/api\/albums\/([^/]+)\/upload$/);
     if (request.method === "POST" && uploadMatch) {
-      if (!isAdmin(request)) return json({ error: "unauthorized" }, 401, origin);
+      if (!isAdmin(request, env)) return json({ error: "unauthorized" }, 401, origin);
       const slug = uploadMatch[1];
       const album = await env.DB.prepare("SELECT * FROM albums WHERE slug = ?").bind(slug).first<{
         id: number;
@@ -120,7 +119,7 @@ export default {
     // ===== DELETE /api/photos/:id =====
     const photoMatch = path.match(/^\/api\/photos\/(\d+)$/);
     if (request.method === "DELETE" && photoMatch) {
-      if (!isAdmin(request)) return json({ error: "unauthorized" }, 401, origin);
+      if (!isAdmin(request, env)) return json({ error: "unauthorized" }, 401, origin);
       const id = parseInt(photoMatch[1]);
       const photo = await env.DB.prepare("SELECT * FROM photos WHERE id = ?").bind(id).first<{
         url: string;

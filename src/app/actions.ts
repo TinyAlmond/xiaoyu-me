@@ -5,7 +5,9 @@ import { createSession, validateSession, destroySession } from "@/lib/session";
 const API = "https://sylvia-photo-api.longsizhuo.workers.dev";
 
 function getAdminSecret(): string {
-  return process.env.ADMIN_SECRET || "sylvia-admin-2026";
+  const secret = process.env.ADMIN_SECRET;
+  if (!secret) throw new Error("ADMIN_SECRET is not set");
+  return secret;
 }
 
 // 登录
